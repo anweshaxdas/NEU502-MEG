@@ -7,9 +7,13 @@
 #
 # WINDOWS USERS: This script requires WSL (Windows Subsystem for Linux).
 # If you don't have WSL installed, open PowerShell as Administrator and run:
-#     wsl --install
-# Then restart your computer, open the Ubuntu terminal, and run:
+#     wsl --install -d Ubuntu-22.04
+# Then restart your computer, open the Ubuntu 22.04 terminal, and run:
 #     bash setup_opm.sh
+# NOTE: Ubuntu 22.04 is required for FreeSurfer compatibility. If you already
+# have a newer Ubuntu in WSL, you can remove it with:
+#     wsl --unregister Ubuntu
+# Then install 22.04 using the command above.
 # =============================================================================
 
 set -e  # Exit on any error
@@ -32,9 +36,9 @@ case "$OS_TYPE" in
         echo "Windows users must run this script inside WSL (Windows Subsystem for Linux)."
         echo "To install WSL, open PowerShell as Administrator and run:"
         echo ""
-        echo "    wsl --install"
+        echo "    wsl --install -d Ubuntu-22.04"
         echo ""
-        echo "Then restart your computer, open the Ubuntu terminal, and re-run this script."
+        echo "Then restart your computer, open the Ubuntu 22.04 terminal, and re-run this script."
         exit 1
         ;;
 esac
@@ -105,7 +109,7 @@ else
 fi
 echo ""
 
-# --- mne-opm (dev branch) ---
+# --- mne-opm (dev branch) by Harrison Ritz ---
 echo "--- Step 2: Install mne-opm (dev branch) ---"
 echo ""
 
@@ -146,18 +150,15 @@ if [ ! -d "$INSTALL_DIR/mne-opm" ]; then
     git clone -b dev https://github.com/harrisonritz/mne-opm.git
 fi
 
-echo "Installing mne-opm in editable mode..."
-pip install -e "$INSTALL_DIR/mne-opm"
-
 echo ""
-echo "✓ mne-opm (dev branch) installed successfully!"
+echo "✓ mne-opm (dev branch) cloned successfully!"
 echo "  Location: $INSTALL_DIR/mne-opm"
 echo ""
 
 # --- Step 3: Run uv sync ---
 echo "--- Step 3: Sync dependencies with uv ---"
 echo ""
-echo "This creates a virtual environment and builds mne-opm forks of:"
+echo "This creates a virtual environment and builds Harrison's forks of:"
 echo "  - mne-bids-pipeline"
 echo "  - mne-bids"
 echo "  - osl-ephys"
@@ -167,6 +168,10 @@ echo ""
 cd "$INSTALL_DIR/mne-opm"
 echo "Running uv sync in $INSTALL_DIR/mne-opm..."
 uv sync
+
+echo ""
+echo "Installing mne-opm in editable mode..."
+uv pip install -e "$INSTALL_DIR/mne-opm"
 
 echo ""
 echo "✓ uv sync complete!"
@@ -251,7 +256,7 @@ if [ -z "$FREESURFER_HOME" ]; then
             fi
             ;;
         Linux)
-            PACKAGE_NAME="freesurfer-linux-ubuntu22-x86_64-8.1.0.tar.xz"
+            PACKAGE_NAME="freesurfer_ubuntu22-8.1.0_amd64.deb"
             if [ "$IS_WSL" = true ]; then
                 echo "Detected: Windows (WSL) — using Linux package"
             else
@@ -259,6 +264,9 @@ if [ -z "$FREESURFER_HOME" ]; then
             fi
             echo "  Note: If you're not on Ubuntu 22, check the download page"
             echo "  for the correct package for your distro."
+            echo ""
+            echo "  After downloading, install with:"
+            echo "    sudo apt install ./freesurfer_ubuntu22-8.1.0_amd64.deb"
             ;;
         *)
             echo "Detected: $OS_TYPE (unsupported for auto-detection)"
@@ -506,7 +514,7 @@ echo ""
 echo "---------------------------------------------"
 echo ""
 
-echo "For more details on mne-opm, see documentation."
+echo "For more details on mne-opm, see Harrison Ritz's documentation."
 read -rp "Would you like to open the mne-opm GitHub page? [Y/n]: " OPEN_GITHUB
 if [[ ! "$OPEN_GITHUB" =~ ^[Nn]$ ]]; then
     open_url "https://github.com/harrisonritz/mne-opm"
