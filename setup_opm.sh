@@ -421,82 +421,120 @@ echo "  CONFIG_BASE  = $CONFIG_BASE"
 echo "  SUBJECTS_DIR = $SUBJECTS_DIR"
 echo ""
 
-# --- Step 7: Download sample files ---
-echo "--- Step 7: Download sample files ---"
+# --- Step 7: Download sample data ---
+echo "--- Step 7: Download sample data ---"
+echo ""
+echo "We will now download the sample dataset. You may not need everything"
+echo "offered, depending where you'd like to start in the pipeline."
+echo "Please ask if you're not sure what you need."
 echo ""
 
-GITHUB_RAW="https://raw.githubusercontent.com/mrribbits/NEU502-2026/main"
+# Install gdown for Google Drive downloads
+echo "Installing gdown (Google Drive downloader)..."
+uv tool install gdown
+echo ""
 
-# Ensure directories exist
-mkdir -p "$ROOT_DIR/analysis"
-mkdir -p "$CONFIG_BASE/$EXPERIMENT"
-mkdir -p "$CONFIG_BASE/$EXPERIMENT/bids"
-
-echo "Downloading runlocal-mne-opm.sh -> $ROOT_DIR/analysis/"
-if command -v curl &> /dev/null; then
-    curl -LsSf "$GITHUB_RAW/runlocal-mne-opm.sh" -o "$ROOT_DIR/analysis/runlocal-mne-opm.sh"
-else
-    wget -q "$GITHUB_RAW/runlocal-mne-opm.sh" -O "$ROOT_DIR/analysis/runlocal-mne-opm.sh"
+# 1. MRI DICOM data
+read -rp "1. Download MRI dicom data to $ROOT_DIR/data/raw/sub_${SUBJECT}/dicom? [Y/n]: " DL_DICOM
+if [[ ! "$DL_DICOM" =~ ^[Nn]$ ]]; then
+    echo "   Downloading MRI dicom data..."
+    gdown --folder "https://drive.google.com/drive/folders/1Tfd28fL3vgi83OKZ9yH2HS3ZvYu8BWqy" -O "$ROOT_DIR/data/raw/sub_${SUBJECT}/dicom" --remaining-ok
+    echo "   ✓ MRI dicom data downloaded."
 fi
-chmod +x "$ROOT_DIR/analysis/runlocal-mne-opm.sh"
+echo ""
 
-echo "Downloading config-analysis1.py -> $CONFIG_BASE/$EXPERIMENT/"
-if command -v curl &> /dev/null; then
-    curl -LsSf "$GITHUB_RAW/config-analysis1.py" -o "$CONFIG_BASE/$EXPERIMENT/config-analysis1.py"
-else
-    wget -q "$GITHUB_RAW/config-analysis1.py" -O "$CONFIG_BASE/$EXPERIMENT/config-analysis1.py"
+# 2. Eyetracking data
+read -rp "2. Download eyetracking data to $ROOT_DIR/data/raw/sub_${SUBJECT}/eyetracking? [Y/n]: " DL_EYE
+if [[ ! "$DL_EYE" =~ ^[Nn]$ ]]; then
+    echo "   Downloading eyetracking data..."
+    gdown --folder "https://drive.google.com/drive/folders/1OgAIt8APBo5peqrJB53k7l6XdcBuM22L" -O "$ROOT_DIR/data/raw/sub_${SUBJECT}/eyetracking" --remaining-ok
+    echo "   ✓ Eyetracking data downloaded."
 fi
+echo ""
 
-echo "Downloading sub-001_config-bids.py -> $CONFIG_BASE/$EXPERIMENT/bids/"
-if command -v curl &> /dev/null; then
-    curl -LsSf "$GITHUB_RAW/sub-001_config-bids.py" -o "$CONFIG_BASE/$EXPERIMENT/bids/sub-001_config-bids.py"
-else
-    wget -q "$GITHUB_RAW/sub-001_config-bids.py" -O "$CONFIG_BASE/$EXPERIMENT/bids/sub-001_config-bids.py"
+# 3. Psychopy event log
+read -rp "3. Download Psychopy event log to $ROOT_DIR/data/raw/sub_${SUBJECT}/metadata? [Y/n]: " DL_PSYCH
+if [[ ! "$DL_PSYCH" =~ ^[Nn]$ ]]; then
+    echo "   Downloading Psychopy event log..."
+    gdown --folder "https://drive.google.com/drive/folders/1alyi6ODMj9Gp1955NRTRya8l4S5JIprw" -O "$ROOT_DIR/data/raw/sub_${SUBJECT}/metadata" --remaining-ok
+    echo "   ✓ Psychopy event log downloaded."
 fi
-
-echo ""
-echo "✓ Sample files downloaded:"
-echo ""
-echo "  $ROOT_DIR/analysis/runlocal-mne-opm.sh"
-echo "    This bash script runs single analysis pipeline stages (e.g., nifti, bids,"
-echo "    freesurfer, coreg, preproc, sensor, source, func, anat). It exports"
-echo "    environment variables needed for the actual pipeline run scripts."
-echo ""
-echo "  $CONFIG_BASE/$EXPERIMENT/config-analysis1.py"
-echo "    This is the configuration file where you set any pipeline parameters"
-echo "    (except bids conversion, see next file). You can keep this in"
-echo "    $CONFIG_BASE/$EXPERIMENT/"
-echo ""
-echo "  $CONFIG_BASE/$EXPERIMENT/bids/sub-001_config-bids.py"
-echo "    This is the configuration file for a subject's raw to bids conversion."
-echo "    You would have one file per subject in $CONFIG_BASE/$EXPERIMENT/bids/"
 echo ""
 
+# 4. MEG empty room noise recording
+read -rp "4. Download MEG empty room noise recording to $ROOT_DIR/data/raw/sub_${SUBJECT}/session1_noise? [Y/n]: " DL_NOISE
+if [[ ! "$DL_NOISE" =~ ^[Nn]$ ]]; then
+    echo "   Downloading MEG empty room noise recording..."
+    gdown --folder "https://drive.google.com/drive/folders/1kFlC4z0s_NVNjd06ZNiJTG1_5wtavpMV" -O "$ROOT_DIR/data/raw/sub_${SUBJECT}/session1_noise" --remaining-ok
+    echo "   ✓ MEG noise recording downloaded."
+fi
 echo ""
 
-# --- Step 8: Configure runlocal-mne-opm.sh with the sample project settings ---
-echo "--- Step 8: Configure runlocal-mne-opm.sh with the sample project settings ---"
+# 5. MEG subject recording
+read -rp "5. Download MEG subject recording to $ROOT_DIR/data/raw/sub_${SUBJECT}/session1_task? [Y/n]: " DL_TASK
+if [[ ! "$DL_TASK" =~ ^[Nn]$ ]]; then
+    echo "   Downloading MEG subject recording..."
+    gdown --folder "https://drive.google.com/drive/folders/1MOsnXZLpPr9VIA71SVxPx6Pi4uyKtr7P" -O "$ROOT_DIR/data/raw/sub_${SUBJECT}/session1_task" --remaining-ok
+    echo "   ✓ MEG subject recording downloaded."
+fi
 echo ""
-RUN_SCRIPT="$ROOT_DIR/analysis/runlocal-mne-opm.sh"
 
-sed -i.bak \
-    -e "s|^PIPELINE=.*|PIPELINE=\"$PIPELINE\"|" \
-    -e "s|^EXPERIMENT=.*|EXPERIMENT=\"$EXPERIMENT\"|" \
-    -e "s|^ANALYSIS=.*|ANALYSIS=\"$ANALYSIS\"|" \
-    -e "s|^SESSION=.*|SESSION=\"$SESSION\"|" \
-    -e "s|^SUBJECT=.*|SUBJECT=\"$SUBJECT\"|" \
-    -e "s|^FREESURFER_HOME=.*|FREESURFER_HOME=\"$FREESURFER_HOME\"|" \
-    -e "s|^ROOT_DIR=.*|ROOT_DIR=\"$ROOT_DIR\"|" \
-    -e "s|^CONFIG_BASE=.*|CONFIG_BASE=\"$CONFIG_BASE\"|" \
-    -e "s|^DATA_BASE=.*|DATA_BASE=\"$DATA_BASE\"|" \
-    -e "s|^SUBJECTS_DIR=.*|SUBJECTS_DIR=\"$SUBJECTS_DIR\"|" \
-    -e "s|^MNE_OPM_DIR=.*|MNE_OPM_DIR=\"$MNE_OPM_DIR\"|" \
-    "$RUN_SCRIPT"
+# 6. Main config file
+read -rp "6. Download main config file to $ROOT_DIR/data/configs/${EXPERIMENT}? [Y/n]: " DL_CONFIG
+if [[ ! "$DL_CONFIG" =~ ^[Nn]$ ]]; then
+    echo "   Downloading main config file..."
+    cd "$ROOT_DIR/data/configs/${EXPERIMENT}"
+    gdown --fuzzy "https://drive.google.com/file/d/1OUrWj_UesWQFlbZygHYYDO0queHuCsW9/view?usp=sharing" --remaining-ok
+    echo "   ✓ Main config file downloaded."
+fi
+echo ""
 
-# Remove the backup file created by sed
-rm -f "${RUN_SCRIPT}.bak"
+# 7. Subject-specific bids config file
+read -rp "7. Download subject-specific bids config file to $ROOT_DIR/data/configs/${EXPERIMENT}/bids? [Y/n]: " DL_BIDS_CONFIG
+if [[ ! "$DL_BIDS_CONFIG" =~ ^[Nn]$ ]]; then
+    echo "   Downloading subject-specific bids config file..."
+    cd "$ROOT_DIR/data/configs/${EXPERIMENT}/bids"
+    gdown --fuzzy "https://drive.google.com/file/d/1WT8W9-nfS7atxm1REEMaoi4Xv2PVrQpt/view?usp=sharing" --remaining-ok
+    echo "   ✓ Subject-specific bids config file downloaded."
+fi
+echo ""
 
-echo "✓ runlocal-mne-opm.sh configured with the sample project settings."
+# --- Step 8: Download and configure runlocal-mne-opm.sh ---
+echo "--- Step 8: Download runlocal-mne-opm.sh and update its paths for you ---"
+echo ""
+
+read -rp "Download runlocal-mne-opm.sh to $ROOT_DIR/analysis? [Y/n]: " DL_RUNLOCAL
+if [[ ! "$DL_RUNLOCAL" =~ ^[Nn]$ ]]; then
+    echo "   Downloading runlocal-mne-opm.sh..."
+    cd "$ROOT_DIR/analysis"
+    gdown --fuzzy "https://drive.google.com/file/d/1Iw-8spc5nn9Gypv0_qryimlTnEUr4g4Y/view?usp=sharing" --remaining-ok
+    chmod +x "$ROOT_DIR/analysis/runlocal-mne-opm.sh"
+    echo "   ✓ runlocal-mne-opm.sh downloaded."
+    echo ""
+
+    echo "   Updating parameters and paths in runlocal-mne-opm.sh..."
+    RUN_SCRIPT="$ROOT_DIR/analysis/runlocal-mne-opm.sh"
+
+    sed -i.bak \
+        -e "s|^PIPELINE=.*|PIPELINE=\"$PIPELINE\"|" \
+        -e "s|^EXPERIMENT=.*|EXPERIMENT=\"$EXPERIMENT\"|" \
+        -e "s|^ANALYSIS=.*|ANALYSIS=\"$ANALYSIS\"|" \
+        -e "s|^SESSION=.*|SESSION=\"$SESSION\"|" \
+        -e "s|^SUBJECT=.*|SUBJECT=\"$SUBJECT\"|" \
+        -e "s|^FREESURFER_HOME=.*|FREESURFER_HOME=\"$FREESURFER_HOME\"|" \
+        -e "s|^ROOT_DIR=.*|ROOT_DIR=\"$ROOT_DIR\"|" \
+        -e "s|^CONFIG_BASE=.*|CONFIG_BASE=\"$CONFIG_BASE\"|" \
+        -e "s|^DATA_BASE=.*|DATA_BASE=\"$DATA_BASE\"|" \
+        -e "s|^SUBJECTS_DIR=.*|SUBJECTS_DIR=\"$SUBJECTS_DIR\"|" \
+        -e "s|^MNE_OPM_DIR=.*|MNE_OPM_DIR=\"$MNE_OPM_DIR\"|" \
+        "$RUN_SCRIPT"
+
+    rm -f "${RUN_SCRIPT}.bak"
+
+    echo "   ✓ runlocal-mne-opm.sh configured with the sample project settings."
+else
+    echo "   Skipping runlocal-mne-opm.sh download."
+fi
 echo ""
 
 echo "============================================="
@@ -514,7 +552,19 @@ echo ""
 echo "---------------------------------------------"
 echo ""
 
-echo "For more details on mne-opm, see Harrison Ritz's documentation."
+echo "How to use mne-opm:"
+echo ""
+echo "  1. Edit the config file as needed."
+echo ""
+echo "  2. Choose a PIPELINE in runlocal-mne-opm.sh (line 7) and run it."
+echo ""
+echo "     Valid PIPELINE options:"
+echo "     nifti | bids | freesurfer | coreg | preproc | sensor | source | all | func | anat"
+echo ""
+echo "     Each pipeline has an associated run_*.sh script."
+echo ""
+
+echo "For more details, see Harrison Ritz's documentation."
 read -rp "Would you like to open the mne-opm GitHub page? [Y/n]: " OPEN_GITHUB
 if [[ ! "$OPEN_GITHUB" =~ ^[Nn]$ ]]; then
     open_url "https://github.com/harrisonritz/mne-opm"
