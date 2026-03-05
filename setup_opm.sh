@@ -349,20 +349,20 @@ SESSION="01"
 MNE_OPM_DIR="$INSTALL_DIR/mne-opm"
 ROOT_DIR="$OPM_DIR/$EXPERIMENT"
 DATA_BASE="$ROOT_DIR/data"
-BIDS_DIR="$DATA_BASE/bids"
-CONFIG_BASE="$DATA_BASE/configs"
+BIDS_DIR="$DATA_BASE/$EXPERIMENT/bids"
+CONFIG_BASE="$DATA_BASE/$EXPERIMENT/configs"
 SUBJECTS_DIR="$BIDS_DIR/derivatives/freesurfer"
 
 echo "Creating project directory structure in $ROOT_DIR..."
 echo ""
 
 # Tree 1: raw/
-mkdir -p "$DATA_BASE/raw/sub_${SUBJECT}/dicom"
-mkdir -p "$DATA_BASE/raw/sub_${SUBJECT}/anat"
-mkdir -p "$DATA_BASE/raw/sub_${SUBJECT}/session1_task"
-mkdir -p "$DATA_BASE/raw/sub_${SUBJECT}/session1_noise"
-mkdir -p "$DATA_BASE/raw/sub_${SUBJECT}/metadata"
-mkdir -p "$DATA_BASE/raw/sub_${SUBJECT}/eyetracking"
+mkdir -p "$DATA_BASE/$EXPERIMENT/raw/sub_${SUBJECT}/dicom"
+mkdir -p "$DATA_BASE/$EXPERIMENT/raw/sub_${SUBJECT}/anat"
+mkdir -p "$DATA_BASE/$EXPERIMENT/raw/sub_${SUBJECT}/session1_task"
+mkdir -p "$DATA_BASE/$EXPERIMENT/raw/sub_${SUBJECT}/session1_noise"
+mkdir -p "$DATA_BASE/$EXPERIMENT/raw/sub_${SUBJECT}/metadata"
+mkdir -p "$DATA_BASE/$EXPERIMENT/raw/sub_${SUBJECT}/eyetracking"
 
 # Tree 2: bids/
 mkdir -p "$BIDS_DIR/sub-${SUBJECT}/ses-${SESSION}/meg"
@@ -371,7 +371,7 @@ mkdir -p "$BIDS_DIR/derivatives/freesurfer/subjects"
 mkdir -p "$BIDS_DIR/derivatives/${ANALYSIS}"
 
 # Tree 3: configs/
-mkdir -p "$CONFIG_BASE/${EXPERIMENT}/bids"
+mkdir -p "$CONFIG_BASE/bids"
 
 # Analysis directory
 mkdir -p "$ROOT_DIR/analysis"
@@ -383,25 +383,25 @@ echo ""
 echo "  $ROOT_DIR/"
 echo "  ├── analysis/"
 echo "  └── data/"
-echo "      ├── raw/"
-echo "      │   └── sub_${SUBJECT}/"
-echo "      │       ├── dicom/"
-echo "      │       ├── anat/"
-echo "      │       ├── session1_task/"
-echo "      │       ├── session1_noise/"
-echo "      │       ├── metadata/"
-echo "      │       └── eyetracking/"
-echo "      ├── bids/"
-echo "      │   ├── sub-${SUBJECT}/"
-echo "      │   │   └── ses-${SESSION}/"
-echo "      │   │       ├── meg/"
-echo "      │   │       └── anat/"
-echo "      │   └── derivatives/"
-echo "      │       ├── freesurfer/"
-echo "      │       │   └── subjects/"
-echo "      │       └── ${ANALYSIS}/"
-echo "      └── configs/"
-echo "          └── ${EXPERIMENT}/"
+echo "      └── $EXPERIMENT/"
+echo "          ├── raw/"
+echo "          │   └── sub_${SUBJECT}/"
+echo "          │       ├── dicom/"
+echo "          │       ├── anat/"
+echo "          │       ├── session1_task/"
+echo "          │       ├── session1_noise/"
+echo "          │       ├── metadata/"
+echo "          │       └── eyetracking/"
+echo "          ├── bids/"
+echo "          │   ├── sub-${SUBJECT}/"
+echo "          │   │   └── ses-${SESSION}/"
+echo "          │   │       ├── meg/"
+echo "          │   │       └── anat/"
+echo "          │   └── derivatives/"
+echo "          │       ├── freesurfer/"
+echo "          │       │   └── subjects/"
+echo "          │       └── ${ANALYSIS}/"
+echo "          └── configs/"
 echo "              └── bids/"
 echo ""
 echo "Project variables:"
@@ -429,73 +429,140 @@ echo "offered, depending where you'd like to start in the pipeline."
 echo "Please ask if you're not sure what you need."
 echo ""
 
-# Install gdown for Google Drive downloads
-echo "Installing gdown (Google Drive downloader)..."
-uv tool install gdown
-echo ""
+# Helper function: download a file from Dropbox using curl or wget
+download_file() {
+    local url="$1"
+    local dest="$2"
+    local dl_url="${url/dl=0/dl=1}"
+
+    if command -v curl &> /dev/null; then
+        curl -L -o "$dest" "$dl_url"
+    else
+        wget -q -O "$dest" "$dl_url"
+    fi
+}
 
 # 1. MRI DICOM data
-read -rp "1. Download MRI dicom data to $ROOT_DIR/data/raw/sub_${SUBJECT}/dicom? [Y/n]: " DL_DICOM
+read -rp "1. Download MRI dicom data to $ROOT_DIR/data/$EXPERIMENT/raw/sub_${SUBJECT}/dicom? [Y/n]: " DL_DICOM
 if [[ ! "$DL_DICOM" =~ ^[Nn]$ ]]; then
-    echo "   Downloading MRI dicom data..."
-    gdown --folder "https://drive.google.com/drive/folders/1Tfd28fL3vgi83OKZ9yH2HS3ZvYu8BWqy" -O "$ROOT_DIR/data/raw/sub_${SUBJECT}/dicom" --remaining-ok
-    echo "   ✓ MRI dicom data downloaded."
+    echo "   Downloading MRI dicom data (zip)..."
+    DEST_DIR="$ROOT_DIR/data/$EXPERIMENT/raw/sub_${SUBJECT}/dicom"
+    if download_file "https://www.dropbox.com/scl/fi/u30g3672lcgt7xxlddd2y/Archive.zip?rlkey=kqq7j6dhxngfxv9l0pce8lob6&dl=0" "$DEST_DIR/Archive.zip"; then
+        echo "   Extracting..."
+        cd "$DEST_DIR"
+        unzip -qo Archive.zip
+        rm -f Archive.zip
+        rm -rf __MACOSX
+        echo "   ✓ MRI dicom data downloaded and extracted."
+    else
+        echo ""
+        echo "   ⚠ Download failed. Please download manually from your browser:"
+        echo "     https://www.dropbox.com/scl/fi/u30g3672lcgt7xxlddd2y/Archive.zip?rlkey=kqq7j6dhxngfxv9l0pce8lob6&dl=0"
+        echo "   Then unzip and place the DICOM files in:"
+        echo "     $DEST_DIR/"
+    fi
 fi
 echo ""
 
 # 2. Eyetracking data
-read -rp "2. Download eyetracking data to $ROOT_DIR/data/raw/sub_${SUBJECT}/eyetracking? [Y/n]: " DL_EYE
+read -rp "2. Download eyetracking data to $ROOT_DIR/data/$EXPERIMENT/raw/sub_${SUBJECT}/eyetracking? [Y/n]: " DL_EYE
 if [[ ! "$DL_EYE" =~ ^[Nn]$ ]]; then
     echo "   Downloading eyetracking data..."
-    gdown --folder "https://drive.google.com/drive/folders/1OgAIt8APBo5peqrJB53k7l6XdcBuM22L" -O "$ROOT_DIR/data/raw/sub_${SUBJECT}/eyetracking" --remaining-ok
-    echo "   ✓ Eyetracking data downloaded."
+    DEST_DIR="$ROOT_DIR/data/$EXPERIMENT/raw/sub_${SUBJECT}/eyetracking"
+    if download_file "https://www.dropbox.com/scl/fi/k4ow3a3xgh40ofnn5ay8e/recording.asc?rlkey=f19uogxfdggpuwevjdl7yl39l&dl=0" "$DEST_DIR/recording.asc"; then
+        echo "   ✓ Eyetracking data downloaded."
+    else
+        echo ""
+        echo "   ⚠ Download failed. Please download manually from your browser:"
+        echo "     https://www.dropbox.com/scl/fi/k4ow3a3xgh40ofnn5ay8e/recording.asc?rlkey=f19uogxfdggpuwevjdl7yl39l&dl=0"
+        echo "   Then place the file in:"
+        echo "     $DEST_DIR/"
+    fi
 fi
 echo ""
 
 # 3. Psychopy event log
-read -rp "3. Download Psychopy event log to $ROOT_DIR/data/raw/sub_${SUBJECT}/metadata? [Y/n]: " DL_PSYCH
+read -rp "3. Download Psychopy event log to $ROOT_DIR/data/$EXPERIMENT/raw/sub_${SUBJECT}/metadata? [Y/n]: " DL_PSYCH
 if [[ ! "$DL_PSYCH" =~ ^[Nn]$ ]]; then
     echo "   Downloading Psychopy event log..."
-    gdown --folder "https://drive.google.com/drive/folders/1alyi6ODMj9Gp1955NRTRya8l4S5JIprw" -O "$ROOT_DIR/data/raw/sub_${SUBJECT}/metadata" --remaining-ok
-    echo "   ✓ Psychopy event log downloaded."
+    DEST_DIR="$ROOT_DIR/data/$EXPERIMENT/raw/sub_${SUBJECT}/metadata"
+    if download_file "https://www.dropbox.com/scl/fi/c60r0237kt57i66ssduki/sub-001_events.csv?rlkey=tlckvan89bptp8vx8e0uwkn2r&dl=0" "$DEST_DIR/sub-001_events.csv"; then
+        echo "   ✓ Psychopy event log downloaded."
+    else
+        echo ""
+        echo "   ⚠ Download failed. Please download manually from your browser:"
+        echo "     https://www.dropbox.com/scl/fi/c60r0237kt57i66ssduki/sub-001_events.csv?rlkey=tlckvan89bptp8vx8e0uwkn2r&dl=0"
+        echo "   Then place the file in:"
+        echo "     $DEST_DIR/"
+    fi
 fi
 echo ""
 
 # 4. MEG empty room noise recording
-read -rp "4. Download MEG empty room noise recording to $ROOT_DIR/data/raw/sub_${SUBJECT}/session1_noise? [Y/n]: " DL_NOISE
+read -rp "4. Download MEG empty room noise recording to $ROOT_DIR/data/$EXPERIMENT/raw/sub_${SUBJECT}/session1_noise? [Y/n]: " DL_NOISE
 if [[ ! "$DL_NOISE" =~ ^[Nn]$ ]]; then
     echo "   Downloading MEG empty room noise recording..."
-    gdown --folder "https://drive.google.com/drive/folders/1kFlC4z0s_NVNjd06ZNiJTG1_5wtavpMV" -O "$ROOT_DIR/data/raw/sub_${SUBJECT}/session1_noise" --remaining-ok
-    echo "   ✓ MEG noise recording downloaded."
+    DEST_DIR="$ROOT_DIR/data/$EXPERIMENT/raw/sub_${SUBJECT}/session1_noise"
+    if download_file "https://www.dropbox.com/scl/fi/1wlysh1wh6jay78twl05v/20260303_134623_meg.fif?rlkey=jlkgjcyekfwf2bf5mu8ds918a&dl=0" "$DEST_DIR/20260303_134623_meg.fif"; then
+        echo "   ✓ MEG noise recording downloaded."
+    else
+        echo ""
+        echo "   ⚠ Download failed. Please download manually from your browser:"
+        echo "     https://www.dropbox.com/scl/fi/1wlysh1wh6jay78twl05v/20260303_134623_meg.fif?rlkey=jlkgjcyekfwf2bf5mu8ds918a&dl=0"
+        echo "   Then place the file in:"
+        echo "     $DEST_DIR/"
+    fi
 fi
 echo ""
 
 # 5. MEG subject recording
-read -rp "5. Download MEG subject recording to $ROOT_DIR/data/raw/sub_${SUBJECT}/session1_task? [Y/n]: " DL_TASK
+read -rp "5. Download MEG subject recording to $ROOT_DIR/data/$EXPERIMENT/raw/sub_${SUBJECT}/session1_task? [Y/n]: " DL_TASK
 if [[ ! "$DL_TASK" =~ ^[Nn]$ ]]; then
     echo "   Downloading MEG subject recording..."
-    gdown --folder "https://drive.google.com/drive/folders/1MOsnXZLpPr9VIA71SVxPx6Pi4uyKtr7P" -O "$ROOT_DIR/data/raw/sub_${SUBJECT}/session1_task" --remaining-ok
-    echo "   ✓ MEG subject recording downloaded."
+    DEST_DIR="$ROOT_DIR/data/$EXPERIMENT/raw/sub_${SUBJECT}/session1_task"
+    if download_file "https://www.dropbox.com/scl/fi/0heme6p98cf8q5wsm4gvs/20260303_143625_meg.fif?rlkey=rworio33eala39umni5pxkuv1&dl=0" "$DEST_DIR/20260303_143625_meg.fif"; then
+        echo "   ✓ MEG subject recording downloaded."
+    else
+        echo ""
+        echo "   ⚠ Download failed. Please download manually from your browser:"
+        echo "     https://www.dropbox.com/scl/fi/0heme6p98cf8q5wsm4gvs/20260303_143625_meg.fif?rlkey=rworio33eala39umni5pxkuv1&dl=0"
+        echo "   Then place the file in:"
+        echo "     $DEST_DIR/"
+    fi
 fi
 echo ""
 
 # 6. Main config file
-read -rp "6. Download main config file to $ROOT_DIR/data/configs/${EXPERIMENT}? [Y/n]: " DL_CONFIG
+read -rp "6. Download main config file to $CONFIG_BASE? [Y/n]: " DL_CONFIG
 if [[ ! "$DL_CONFIG" =~ ^[Nn]$ ]]; then
     echo "   Downloading main config file..."
-    cd "$ROOT_DIR/data/configs/${EXPERIMENT}"
-    gdown --fuzzy "https://drive.google.com/file/d/1OUrWj_UesWQFlbZygHYYDO0queHuCsW9/view?usp=sharing" --remaining-ok
-    echo "   ✓ Main config file downloaded."
+    DEST_DIR="$CONFIG_BASE"
+    if download_file "https://www.dropbox.com/scl/fi/8cejmh6y2g4z975ps5c9f/config-analysis1.py?rlkey=741udeakll3559lug05glju9w&dl=0" "$DEST_DIR/config-analysis1.py"; then
+        echo "   ✓ Main config file downloaded."
+    else
+        echo ""
+        echo "   ⚠ Download failed. Please download manually from your browser:"
+        echo "     https://www.dropbox.com/scl/fi/8cejmh6y2g4z975ps5c9f/config-analysis1.py?rlkey=741udeakll3559lug05glju9w&dl=0"
+        echo "   Then place the file in:"
+        echo "     $DEST_DIR/"
+    fi
 fi
 echo ""
 
 # 7. Subject-specific bids config file
-read -rp "7. Download subject-specific bids config file to $ROOT_DIR/data/configs/${EXPERIMENT}/bids? [Y/n]: " DL_BIDS_CONFIG
+read -rp "7. Download subject-specific bids config file to $CONFIG_BASE/bids? [Y/n]: " DL_BIDS_CONFIG
 if [[ ! "$DL_BIDS_CONFIG" =~ ^[Nn]$ ]]; then
     echo "   Downloading subject-specific bids config file..."
-    cd "$ROOT_DIR/data/configs/${EXPERIMENT}/bids"
-    gdown --fuzzy "https://drive.google.com/file/d/1WT8W9-nfS7atxm1REEMaoi4Xv2PVrQpt/view?usp=sharing" --remaining-ok
-    echo "   ✓ Subject-specific bids config file downloaded."
+    DEST_DIR="$CONFIG_BASE/bids"
+    if download_file "https://www.dropbox.com/scl/fi/4sy9rt83cbna3kx4jrhpj/sub-001_config-bids.py?rlkey=eofr513kzhfj436q4r9dvetdj&dl=0" "$DEST_DIR/sub-001_config-bids.py"; then
+        echo "   ✓ Subject-specific bids config file downloaded."
+    else
+        echo ""
+        echo "   ⚠ Download failed. Please download manually from your browser:"
+        echo "     https://www.dropbox.com/scl/fi/4sy9rt83cbna3kx4jrhpj/sub-001_config-bids.py?rlkey=eofr513kzhfj436q4r9dvetdj&dl=0"
+        echo "   Then place the file in:"
+        echo "     $DEST_DIR/"
+    fi
 fi
 echo ""
 
@@ -506,32 +573,40 @@ echo ""
 read -rp "Download runlocal-mne-opm.sh to $ROOT_DIR/analysis? [Y/n]: " DL_RUNLOCAL
 if [[ ! "$DL_RUNLOCAL" =~ ^[Nn]$ ]]; then
     echo "   Downloading runlocal-mne-opm.sh..."
-    cd "$ROOT_DIR/analysis"
-    gdown --fuzzy "https://drive.google.com/file/d/1Iw-8spc5nn9Gypv0_qryimlTnEUr4g4Y/view?usp=sharing" --remaining-ok
-    chmod +x "$ROOT_DIR/analysis/runlocal-mne-opm.sh"
-    echo "   ✓ runlocal-mne-opm.sh downloaded."
-    echo ""
+    DEST_DIR="$ROOT_DIR/analysis"
+    if download_file "https://www.dropbox.com/scl/fi/gt125gd2o7b4mr7wea6fc/runlocal-mne-opm.sh?rlkey=mp0dbfh4mlejkas1hkrexp70u&dl=0" "$DEST_DIR/runlocal-mne-opm.sh"; then
+        chmod +x "$DEST_DIR/runlocal-mne-opm.sh"
+        echo "   ✓ runlocal-mne-opm.sh downloaded."
+        echo ""
 
-    echo "   Updating parameters and paths in runlocal-mne-opm.sh..."
-    RUN_SCRIPT="$ROOT_DIR/analysis/runlocal-mne-opm.sh"
+        echo "   Updating parameters and paths in runlocal-mne-opm.sh..."
+        RUN_SCRIPT="$DEST_DIR/runlocal-mne-opm.sh"
 
-    sed -i.bak \
-        -e "s|^PIPELINE=.*|PIPELINE=\"$PIPELINE\"|" \
-        -e "s|^EXPERIMENT=.*|EXPERIMENT=\"$EXPERIMENT\"|" \
-        -e "s|^ANALYSIS=.*|ANALYSIS=\"$ANALYSIS\"|" \
-        -e "s|^SESSION=.*|SESSION=\"$SESSION\"|" \
-        -e "s|^SUBJECT=.*|SUBJECT=\"$SUBJECT\"|" \
-        -e "s|^FREESURFER_HOME=.*|FREESURFER_HOME=\"$FREESURFER_HOME\"|" \
-        -e "s|^ROOT_DIR=.*|ROOT_DIR=\"$ROOT_DIR\"|" \
-        -e "s|^CONFIG_BASE=.*|CONFIG_BASE=\"$CONFIG_BASE\"|" \
-        -e "s|^DATA_BASE=.*|DATA_BASE=\"$DATA_BASE\"|" \
-        -e "s|^SUBJECTS_DIR=.*|SUBJECTS_DIR=\"$SUBJECTS_DIR\"|" \
-        -e "s|^MNE_OPM_DIR=.*|MNE_OPM_DIR=\"$MNE_OPM_DIR\"|" \
-        "$RUN_SCRIPT"
+        sed -i.bak \
+            -e "s|^PIPELINE=.*|PIPELINE=\"$PIPELINE\"|" \
+            -e "s|^EXPERIMENT=.*|EXPERIMENT=\"$EXPERIMENT\"|" \
+            -e "s|^ANALYSIS=.*|ANALYSIS=\"$ANALYSIS\"|" \
+            -e "s|^SESSION=.*|SESSION=\"$SESSION\"|" \
+            -e "s|^SUBJECT=.*|SUBJECT=\"$SUBJECT\"|" \
+            -e "s|^FREESURFER_HOME=.*|FREESURFER_HOME=\"$FREESURFER_HOME\"|" \
+            -e "s|^ROOT_DIR=.*|ROOT_DIR=\"$ROOT_DIR\"|" \
+            -e "s|^CONFIG_BASE=.*|CONFIG_BASE=\"$CONFIG_BASE\"|" \
+            -e "s|^DATA_BASE=.*|DATA_BASE=\"$DATA_BASE\"|" \
+            -e "s|^SUBJECTS_DIR=.*|SUBJECTS_DIR=\"$SUBJECTS_DIR\"|" \
+            -e "s|^MNE_OPM_DIR=.*|MNE_OPM_DIR=\"$MNE_OPM_DIR\"|" \
+            "$RUN_SCRIPT"
 
-    rm -f "${RUN_SCRIPT}.bak"
+        rm -f "${RUN_SCRIPT}.bak"
 
-    echo "   ✓ runlocal-mne-opm.sh configured with the sample project settings."
+        echo "   ✓ runlocal-mne-opm.sh configured with the sample project settings."
+    else
+        echo ""
+        echo "   ⚠ Download failed. Please download manually from your browser:"
+        echo "     https://www.dropbox.com/scl/fi/gt125gd2o7b4mr7wea6fc/runlocal-mne-opm.sh?rlkey=mp0dbfh4mlejkas1hkrexp70u&dl=0"
+        echo "   Then place the file in:"
+        echo "     $ROOT_DIR/analysis/"
+        echo "   NOTE: You will need to manually update the paths in the file."
+    fi
 else
     echo "   Skipping runlocal-mne-opm.sh download."
 fi
