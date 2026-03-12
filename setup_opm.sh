@@ -542,13 +542,6 @@ if [[ ! "$DL_SCRIPTS" =~ ^[Nn]$ ]]; then
         echo "   ⚠ Failed. Download manually from: $GITHUB_RAW/analysis/runlocal-mne-opm.sh"
     fi
 
-    echo "   Downloading check-coreg.py..."
-    if curl -LsSf "$GITHUB_RAW/analysis/check-coreg.py" -o "$DEST_DIR/check-coreg.py"; then
-        echo "   ✓ check-coreg.py downloaded."
-    else
-        echo "   ⚠ Failed. Download manually from: $GITHUB_RAW/analysis/check-coreg.py"
-    fi
-
     echo "   Downloading check-meg-and-eyedata-annotations.py..."
     if curl -LsSf "$GITHUB_RAW/analysis/check-meg-and-eyedata-annotations.py" -o "$DEST_DIR/check-meg-and-eyedata-annotations.py"; then
         echo "   ✓ check-meg-and-eyedata-annotations.py downloaded."
